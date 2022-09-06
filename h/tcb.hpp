@@ -7,38 +7,60 @@
 
 #include "../lib/hw.h"
 #include "scheduler.hpp"
+#include "../h/print.hpp"
 
 // Thread Control Block
 class TCB
 {
 public:
-    ~TCB() { delete[] stack; }
+    ~TCB() {
+        delete[] stack;
+    }
 
     bool isFinished() const { return finished; }
-
+    static int x;
     void setFinished(bool value) { finished = value; }
 
     uint64 getTimeSlice() const { return timeSlice; }
 
     using Body = void (*)();
 
-    static TCB *createThread(Body body);
+//    static TCB *createThread(Body body);
+    static TCB *createThread(TCB** handle, Body body, void* arg, uint64* stack_space);
 
     static void yield();
 
     static TCB *running;
 
 private:
-    TCB(Body body, uint64 timeSlice) :
+//    TCB(Body body, uint64 timeSlice) :
+//            body(body),
+//
+//            stack(body != nullptr ? new uint64[STACK_SIZE] : nullptr),
+//            context({(uint64) &threadWrapper,
+//                     stack != nullptr ? (uint64) &stack[STACK_SIZE] : 0
+//                    }),
+//            timeSlice(timeSlice),
+//
+//            finished(false)
+//    {
+//        if (body != nullptr) { Scheduler::put(this); }
+//    }
+
+    TCB(Body body, uint64 timeSlice, void* arg, uint64* stack_space) :
+            arg(arg),
             body(body),
-            stack(body != nullptr ? new uint64[STACK_SIZE] : nullptr),
+            stack(body != nullptr ? stack_space : nullptr),
             context({(uint64) &threadWrapper,
-                     stack != nullptr ? (uint64) &stack[STACK_SIZE] : 0
+                     stack != nullptr ? (uint64) &stack[DEFAULT_STACK_SIZE] : 0
                     }),
             timeSlice(timeSlice),
+
             finished(false)
     {
-        if (body != nullptr) { Scheduler::put(this); }
+        if (body != nullptr) {
+            Scheduler::put(this);
+        }
     }
 
     struct Context
@@ -46,7 +68,7 @@ private:
         uint64 ra;
         uint64 sp;
     };
-
+    void* arg;
     Body body;
     uint64 *stack;
     Context context;

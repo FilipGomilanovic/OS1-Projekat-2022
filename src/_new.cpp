@@ -3,16 +3,24 @@
 //
 
 #include "../lib/mem.h"
+#include "../h/print.hpp"
+
 
 using size_t = decltype(sizeof(0));
 
 void *operator new(size_t n)
 {
+//    printString("ALokacija + ");
+//    printInteger(n);
+//    printString("\n");
     return __mem_alloc(n);
 }
 
 void *operator new[](size_t n)
 {
+//    printString("Alokacija steka = ");
+//    printInteger(n);
+//    printString("\n");
     return __mem_alloc(n);
 }
 
@@ -25,3 +33,4 @@ void operator delete[](void *p) noexcept
 {
     __mem_free(p);
 }
+

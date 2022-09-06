@@ -5,13 +5,21 @@
 #include "../h/tcb.hpp"
 #include "../h/riscv.hpp"
 
-TCB *TCB::running = nullptr;
 
+TCB *TCB::running = nullptr;
+int TCB::x = 0;
 uint64 TCB::timeSliceCounter = 0;
 
-TCB *TCB::createThread(Body body)
+TCB *TCB::createThread(TCB** handle, Body body, void* arg, uint64* stack_space)
 {
-    return new TCB(body, TIME_SLICE);
+    *handle = new TCB(body, TIME_SLICE, arg, stack_space);
+    printString("handle iz createThread ");
+    printInteger(x);
+    x++;
+    printString(":                ");
+    printInteger((uint64)&(**handle));
+    printString("\n");
+    return *handle;
 }
 
 void TCB::yield()

@@ -14,4 +14,5 @@ TCB *Scheduler::get()
 void Scheduler::put(TCB *ccb)
 {
     readyThreadQueue.addLast(ccb);
+//    printString("Zavrsen sedjuler");
 }
