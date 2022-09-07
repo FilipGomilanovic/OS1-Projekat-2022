@@ -9,6 +9,8 @@
 #include "../h/codes.h"
 #include "../h/syscall_c.h"
 
+SleepingThreadList Riscv::sleepingThreads;
+
 void Riscv::popSppSpie()
 {
     __asm__ volatile("csrw sepc, ra");
@@ -53,27 +55,20 @@ void Riscv::handleSupervisorTrap()
             __asm__ volatile("ld t1, 8*14(fp)");
             __asm__ volatile("mv %0, t1" : "=r" (stack));
 
-
-
-//            printString("Code = ");
-//            printInteger(code);
-//            printString("\n");
-//
-//            printString("stack = ");
-//            printInteger(*stack);
-//            printString("\n");
-
             TCB::createThread(handle, start_routine, args, stack);
-//            if (handle != nullptr){
-//                printInteger(handle);
-//            }
 
         }
         else if (code == ThreadExit){
-
+            TCB::running->setFinished(true);
+            TCB::dispatch();
+            w_sstatus(sstatus);
+            w_sepc(sepc);
         }
         else if (code == ThreadDispatch){
-
+            TCB::timeSliceCounter = 0;
+            TCB::dispatch();
+            w_sstatus(sstatus);
+            w_sepc(sepc);
         }
         else if (code == SemOpen){
 
@@ -88,6 +83,22 @@ void Riscv::handleSupervisorTrap()
 
         }
         else if (code == TimeSleep){
+            //TReba da smestim nit u sleepingThreads i da promenim kontekst, ali ne smem da je opet vratim u scheduler
+            //NIJE IMPLEMENTIRANO BUDJENJE NITI!
+
+            time_t slice;
+            printString("Usao ovde");
+            __asm__ volatile("ld t2, 8*11(fp)");
+            __asm__ volatile("mv %0, t2" : "=r" (slice));
+            printString("\nSlice = ");
+            printInteger(slice);
+            printString("\n");
+            if(slice != 0) {
+                TCB::running->setSleeping(true);
+                Riscv::sleepingThreads.put(TCB::running, slice);
+            }
+            TCB::timeSliceCounter = 0;
+            TCB::dispatch();
 
         }
         else if (code == GetC){
@@ -110,7 +121,19 @@ void Riscv::handleSupervisorTrap()
     }
     else if (scause == 0x8000000000000001UL)
     {
-        // interrupt: yes; cause code: supervisor software interrupt (CLINT; machine timer interrupt)
+//        printString("TIMER");
+//         interrupt: yes; cause code: supervisor software interrupt (CLINT; machine timer interrupt)
+        time_t temp = Riscv::sleepingThreads.peekFirstSlice();
+        time_t t1 = -1;
+
+        if (temp != t1){
+//            printInteger(Riscv::sleepingThreads.peekFirstSlice());
+//            printString("\n");
+            Riscv::sleepingThreads.decFirst();
+            if (Riscv::sleepingThreads.peekFirstSlice() == 0) {
+                Riscv::sleepingThreads.removeFinishedThreads();
+            }
+        }
         mc_sip(SIP_SSIP);
         TCB::timeSliceCounter++;
         if (TCB::timeSliceCounter >= TCB::running->getTimeSlice())

@@ -32,22 +32,40 @@ int thread_create (thread_t* handle, void(*start_routine)(void*), void* arg) {
     return 0;
 
 }
-//
-//int thread_exit () {
-//
-//}
-//
-//void thread_dispatch () {
-//    TCB::dispatch();
-//}
+
+int thread_exit () {
+    printString("Gasimo nit: ");
+    printInteger(TCB::running->getId());
+    printString("\n");
+    __asm__ volatile("mv a0, %0" : : "r" (ThreadExit));
+    __asm__ volatile ("ecall");
+    return 0;
+}
+
+void thread_dispatch () {
+
+    __asm__ volatile("mv a0, %0" : : "r" (ThreadDispatch));
+    __asm__ volatile ("ecall");
+
+}
 //
 //int sem_signal (sem_t id) {
 //
 //}
-//
-//int time_sleep (time_t) {
-//
-//}
+
+int time_sleep (time_t slice) {
+
+    printString("Nit ");
+    printInteger(TCB::running->getId());
+    printString(" uspavana na: ");
+    printInteger(slice / 10);
+    printString(" sekundi\n");
+
+    __asm__ volatile("mv a0, %0" : : "r" (TimeSleep));
+    __asm__ volatile("mv a1, %0" : : "r" (slice));
+    __asm__ volatile ("ecall");
+    return 0;
+}
 
 //char getc () {
 //

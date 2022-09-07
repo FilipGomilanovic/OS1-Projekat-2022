@@ -18,19 +18,18 @@ public:
     }
 
     bool isFinished() const { return finished; }
-    static int x;
     void setFinished(bool value) { finished = value; }
-
+    void setSleeping(bool value) { sleeping = value; }
+    bool isSleeping() const { return sleeping; }
     uint64 getTimeSlice() const { return timeSlice; }
 
     using Body = void (*)();
-
-//    static TCB *createThread(Body body);
     static TCB *createThread(TCB** handle, Body body, void* arg, uint64* stack_space);
-
     static void yield();
+    int getId() { return id; }
 
     static TCB *running;
+    static int x;
 
 private:
 //    TCB(Body body, uint64 timeSlice) :
@@ -55,8 +54,9 @@ private:
                      stack != nullptr ? (uint64) &stack[DEFAULT_STACK_SIZE] : 0
                     }),
             timeSlice(timeSlice),
-
-            finished(false)
+            id(x),
+            finished(false),
+            sleeping(false)
     {
         if (body != nullptr) {
             Scheduler::put(this);
@@ -73,7 +73,9 @@ private:
     uint64 *stack;
     Context context;
     uint64 timeSlice;
+    int id;
     bool finished;
+    bool sleeping;
 
     friend class Riscv;
 

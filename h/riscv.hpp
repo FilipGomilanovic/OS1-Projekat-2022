@@ -6,6 +6,8 @@
 #define OS1_VEZBE07_RISCV_CONTEXT_SWITCH_2_INTERRUPT_RISCV_HPP
 
 #include "../lib/hw.h"
+#include "tcb.hpp"
+#include "../h/sleepingThreadsList.h"
 
 class Riscv
 {
@@ -83,6 +85,8 @@ private:
 
     // supervisor trap handler
     static void handleSupervisorTrap();
+
+    static SleepingThreadList sleepingThreads;
 
 };
 
