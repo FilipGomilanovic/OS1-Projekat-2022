@@ -6,11 +6,15 @@
 #include "../h/riscv.hpp"
 #include "../h/print.hpp"
 #include "../h/syscall_c.h"
+#include "../h/_sem.h"
+#include "../h/ThreadSleep_C_API_test.hpp"
 
 bool finishedA = false;
 bool finishedB = false;
 bool finishedC = false;
 bool finishedD = false;
+_sem* sem;
+
 
 uint64 fibonacci(uint64 n) {
     if (n == 0 || n == 1) { return n; }
@@ -25,7 +29,7 @@ void workerBodyA2(void* arg) {
             for (uint64 k = 0; k < 30000; k++) { /* busy wait */ }
             thread_dispatch();
         }
-        thread_exit();
+//        thread_exit();
     }
     printString("A finished!\n");
     finishedA = true;
@@ -33,8 +37,12 @@ void workerBodyA2(void* arg) {
 
 void workerBodyB2(void* arg) {
     for (uint64 i = 0; i < 16; i++) {
+        if (i == 15){
+            sem_signal(sem);
+        }
         if (i == 8){
             time_sleep(50);
+            sem_signal(sem);
         }
         printString("B: i="); printInteger(i); printString("\n");
         for (uint64 j = 0; j < 10000; j++) {
@@ -52,7 +60,7 @@ void workerBodyC2(void* arg) {
     for (; i < 3; i++) {
         printString("C: i="); printInteger(i); printString("\n");
     }
-
+    sem_wait(sem);
     printString("C: dispatch\n");
     __asm__ ("li t1, 7");
     thread_dispatch();
@@ -76,8 +84,12 @@ void workerBodyC2(void* arg) {
 
 void workerBodyD2(void* arg) {
     uint8 i = 10;
+
     for (; i < 13; i++) {
         printString("D: i="); printInteger(i); printString("\n");
+        if (i == 10) {
+            sem_wait(sem);
+        }
     }
 
     printString("D: dispatch\n");
@@ -119,11 +131,28 @@ void Threads_C_API_test() {
 
 void userMain() {
     Threads_C_API_test(); // zadatak 2., niti C API i sinhrona promena konteksta
+    testSleeping();       // ThreadSleeping test
 }
 
 
 int main()
 {
+
+    Riscv::w_stvec((uint64) &Riscv::supervisorTrap);
+    TCB* main;
+    sem_open(&sem,0);
+
+    thread_create(&main, nullptr, nullptr);
+    TCB::running = main;
+    Riscv::ms_sstatus(Riscv::SSTATUS_SIE);
+    userMain();
+
+
+    printString("Finished\n");
+
+    return 0;
+
+
 //    Riscv::w_stvec((uint64) &Riscv::supervisorTrap);
 //    TCB *threads[5];
 //
@@ -175,19 +204,5 @@ int main()
 //    printString("Finished\n");
 //
 //    return 0;
-
-    Riscv::w_stvec((uint64) &Riscv::supervisorTrap);
-    TCB* main;
-
-    thread_create(&main, nullptr, nullptr);
-    TCB::running = main;
-    Riscv::ms_sstatus(Riscv::SSTATUS_SIE);
-    userMain();
-
-
-    printString("Finished\n");
-
-    return 0;
-
 
 }

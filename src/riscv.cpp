@@ -8,6 +8,7 @@
 #include "../h/print.hpp"
 #include "../h/codes.h"
 #include "../h/syscall_c.h"
+#include "../h/_sem.h"
 
 SleepingThreadList Riscv::sleepingThreads;
 
@@ -19,7 +20,6 @@ void Riscv::popSppSpie()
 
 void Riscv::handleSupervisorTrap()
 {
-
     uint64 scause = r_scause();
     if (scause == 0x0000000000000008UL || scause == 0x0000000000000009UL)
     {
@@ -31,13 +31,13 @@ void Riscv::handleSupervisorTrap()
         __asm__ volatile("ld t1, 8*10(fp)");
         __asm__ volatile("mv %0, t1" : "=r" (code));
 
-        if (code == MemAlloc) {
+        if (code == MEM_ALLOC) {
 
         }
-        else if (code == MemFree) {
+        else if (code == MEM_FREE) {
 
         }
-        else if (code == ThreadCreate){
+        else if (code == THREAD_CREATE){
             TCB::Body start_routine;
             void* args = nullptr;
             uint64 *stack;
@@ -58,41 +58,56 @@ void Riscv::handleSupervisorTrap()
             TCB::createThread(handle, start_routine, args, stack);
 
         }
-        else if (code == ThreadExit){
+        else if (code == THREAD_EXIT){
             TCB::running->setFinished(true);
             TCB::dispatch();
             w_sstatus(sstatus);
             w_sepc(sepc);
         }
-        else if (code == ThreadDispatch){
+        else if (code == THREAD_DISPATCH){
             TCB::timeSliceCounter = 0;
             TCB::dispatch();
             w_sstatus(sstatus);
             w_sepc(sepc);
         }
-        else if (code == SemOpen){
+        else if (code == SEM_OPEN){
+            sem_t* handle;
+            unsigned init;
+            __asm__ volatile("ld t2, 8*11(fp)");
+            __asm__ volatile("mv %0, t2" : "=r" (handle));
+            __asm__ volatile("ld t2, 8*12(fp)");
+            __asm__ volatile("mv %0, t2" : "=r" (init));
+            _sem::createSemaphore(handle, init);
 
         }
-        else if (code == SemClose){
+        else if (code == SEM_CLOSE){
 
         }
-        else if (code == SemWait){
+        else if (code == SEM_WAIT){
+            sem_t id;
+            __asm__ volatile("ld t2, 8*11(fp)");
+            __asm__ volatile("mv %0, t2" : "=r" (id));
 
+            id->wait();
+            TCB::timeSliceCounter = 0;
+            TCB::dispatch();
         }
-        else if (code == SemSignal){
-
+        else if (code == SEM_SIGNAL){
+            sem_t id;
+            __asm__ volatile("ld t2, 8*11(fp)");
+            __asm__ volatile("mv %0, t2" : "=r" (id));
+            id->signal();
         }
-        else if (code == TimeSleep){
+        else if (code == TIME_SLEEP){
             //TReba da smestim nit u sleepingThreads i da promenim kontekst, ali ne smem da je opet vratim u scheduler
             //NIJE IMPLEMENTIRANO BUDJENJE NITI!
 
             time_t slice;
-            printString("Usao ovde");
             __asm__ volatile("ld t2, 8*11(fp)");
             __asm__ volatile("mv %0, t2" : "=r" (slice));
-            printString("\nSlice = ");
-            printInteger(slice);
-            printString("\n");
+//            printString("\nSlice = ");
+//            printInteger(slice);
+//            printString("\n");
             if(slice != 0) {
                 TCB::running->setSleeping(true);
                 Riscv::sleepingThreads.put(TCB::running, slice);
@@ -101,10 +116,10 @@ void Riscv::handleSupervisorTrap()
             TCB::dispatch();
 
         }
-        else if (code == GetC){
+        else if (code == GET_C){
 
         }
-        else if (code == PutC){
+        else if (code == PUT_C){
 
         }
         else {

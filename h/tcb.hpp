@@ -19,11 +19,16 @@ public:
 
     bool isFinished() const { return finished; }
     void setFinished(bool value) { finished = value; }
-    void setSleeping(bool value) { sleeping = value; }
+
     bool isSleeping() const { return sleeping; }
+    void setSleeping(bool value) { sleeping = value; }
+
+    bool isBlocked() const { return blocked; }
+    void setBlocked(bool value) { blocked = value; }
+
     uint64 getTimeSlice() const { return timeSlice; }
 
-    using Body = void (*)();
+    using Body = void (*)(void*);
     static TCB *createThread(TCB** handle, Body body, void* arg, uint64* stack_space);
     static void yield();
     int getId() { return id; }
@@ -56,7 +61,8 @@ private:
             timeSlice(timeSlice),
             id(x),
             finished(false),
-            sleeping(false)
+            sleeping(false),
+            blocked(false)
     {
         if (body != nullptr) {
             Scheduler::put(this);
@@ -76,6 +82,7 @@ private:
     int id;
     bool finished;
     bool sleeping;
+    bool blocked;
 
     friend class Riscv;
 

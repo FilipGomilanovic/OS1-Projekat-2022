@@ -30,7 +30,7 @@ void TCB::yield()
 void TCB::dispatch()
 {
     TCB *old = running;
-    if (!old->isFinished() && !old->isSleeping()) { Scheduler::put(old); }
+    if (!old->isFinished() && !old->isSleeping() && !old->isBlocked()) { Scheduler::put(old); }
     running = Scheduler::get();
 
     TCB::contextSwitch(&old->context, &running->context);
@@ -39,7 +39,7 @@ void TCB::dispatch()
 void TCB::threadWrapper()
 {
     Riscv::popSppSpie();
-    running->body();
+    running->body(running->arg);
     running->setFinished(true);
     TCB::yield();
 }
