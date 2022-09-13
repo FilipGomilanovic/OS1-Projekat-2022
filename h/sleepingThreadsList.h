@@ -84,11 +84,13 @@ public:
             }
             else {
                 Elem* novi = new Elem(thread, temp, slice);
-                prev->next = novi;
-                while(temp != nullptr){
-                    temp->relativeTime -= slice;
-                    temp = temp->next;
+                if (prev) {
+                    prev->next = novi;
                 }
+                else {
+                    head = novi;
+                }
+                temp->relativeTime -= slice;
             }
         }
     }

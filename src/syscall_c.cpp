@@ -4,7 +4,6 @@
 #include "../h/codes.h"
 
 
-
 void* mem_alloc (size_t size) {
     return __mem_alloc(size);
 }
@@ -22,12 +21,6 @@ int thread_create (thread_t* handle, void(*start_routine)(void*), void* arg) {
     __asm__ volatile("mv a2, %0" : : "r" (start_routine));
     __asm__ volatile("mv a1, %0" : : "r" (handle));
     __asm__ volatile("mv a0, %0" : : "r" (THREAD_CREATE));
-
-//    __asm__ volatile("mv a2, %0" : : "r" (handle));
-//    __asm__ volatile("mv a1, %0" : : "r" (start_routine));
-//    __asm__ volatile("mv a5, %0" : : "r" (arg));
-//    __asm__ volatile("mv a3, %0" : : "r" (ThreadCreate));
-//    __asm__ volatile("mv a4, %0" : : "r" (stack));
     __asm__ volatile ("ecall");
     return 0;
 
@@ -92,10 +85,23 @@ int time_sleep (time_t slice) {
     return 0;
 }
 
-//char getc () {
-//
-//}
+char getc () {
+    __asm__ volatile("mv a0, %0" : : "r" (GET_C));
+    char c = 's';
+    char* ret = &c;
+    __asm__ volatile("mv a1, %0" : : "r" (ret));
+    __asm__ volatile ("ecall");
 
-//void putc (char){
-//
-//}
+    if (ret != nullptr)
+        return *ret;
+    else {
+        return '!';
+    }
+
+}
+
+void putc (char c){
+    __asm__ volatile("mv a1, %0" : : "r" (c));
+    __asm__ volatile("mv a0, %0" : : "r" (PUT_C));
+    __asm__ volatile ("ecall");
+}

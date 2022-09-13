@@ -13,13 +13,23 @@ uint64 TCB::timeSliceCounter = 0;
 TCB *TCB::createThread(TCB** handle, Body body, void* arg, uint64* stack_space)
 {
     *handle = new TCB(body, TIME_SLICE, arg, stack_space);
-    printString("handle iz createThread ");
-    printInteger(x);
+//    printString("handle iz createThread ");
+//    printInteger(x);
     x++;
-    printString(":                ");
-    printInteger((uint64)&(**handle));
-    printString("\n");
+//    printString(":                ");
+//    printInteger((uint64)&(**handle));
+//    printString("\n");
     return *handle;
+}
+
+void TCB::outputThreadBody(void *) {
+    while(true){
+        while((*((char*)(CONSOLE_STATUS)) & CONSOLE_TX_STATUS_BIT) && (Riscv::putCBuffer.getCount() > 0)){
+            char c = Riscv::putCBuffer.getc();
+            *((char*)CONSOLE_TX_DATA) = c;
+        }
+        thread_dispatch();
+    }
 }
 
 void TCB::yield()
@@ -33,7 +43,9 @@ void TCB::dispatch()
     if (!old->isFinished() && !old->isSleeping() && !old->isBlocked()) { Scheduler::put(old); }
     running = Scheduler::get();
 
-    TCB::contextSwitch(&old->context, &running->context);
+    if (old != running) {
+        TCB::contextSwitch(&old->context, &running->context);
+    }
 }
 
 void TCB::threadWrapper()

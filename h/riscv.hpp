@@ -8,6 +8,7 @@
 #include "../lib/hw.h"
 #include "tcb.hpp"
 #include "../h/sleepingThreadsList.h"
+#include "buffer.h"
 
 class Riscv
 {
@@ -81,14 +82,17 @@ public:
     // supervisor trap
     static void supervisorTrap();
 
+    static Buffer putCBuffer;
+    static Buffer getCBuffer;
+
 private:
 
     // supervisor trap handler
     static void handleSupervisorTrap();
-
     static SleepingThreadList sleepingThreads;
 
 };
+
 
 inline uint64 Riscv::r_scause()
 {

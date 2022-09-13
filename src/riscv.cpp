@@ -3,14 +3,15 @@
 //
 
 #include "../h/riscv.hpp"
-#include "../h/tcb.hpp"
-#include "../lib/console.h"
-#include "../h/print.hpp"
 #include "../h/codes.h"
 #include "../h/syscall_c.h"
-#include "../h/_sem.h"
+#include "../lib/console.h"
+
 
 SleepingThreadList Riscv::sleepingThreads;
+Buffer Riscv::putCBuffer;
+Buffer Riscv::getCBuffer;
+
 
 void Riscv::popSppSpie()
 {
@@ -81,6 +82,9 @@ void Riscv::handleSupervisorTrap()
 
         }
         else if (code == SEM_CLOSE){
+            sem_t* handle;
+            __asm__ volatile("ld t2, 8*11(fp)");
+            __asm__ volatile("mv %0, t2" : "=r" (handle));
 
         }
         else if (code == SEM_WAIT){
@@ -89,8 +93,7 @@ void Riscv::handleSupervisorTrap()
             __asm__ volatile("mv %0, t2" : "=r" (id));
 
             id->wait();
-            TCB::timeSliceCounter = 0;
-            TCB::dispatch();
+
         }
         else if (code == SEM_SIGNAL){
             sem_t id;
@@ -100,7 +103,6 @@ void Riscv::handleSupervisorTrap()
         }
         else if (code == TIME_SLEEP){
             //TReba da smestim nit u sleepingThreads i da promenim kontekst, ali ne smem da je opet vratim u scheduler
-            //NIJE IMPLEMENTIRANO BUDJENJE NITI!
 
             time_t slice;
             __asm__ volatile("ld t2, 8*11(fp)");
@@ -112,14 +114,34 @@ void Riscv::handleSupervisorTrap()
                 TCB::running->setSleeping(true);
                 Riscv::sleepingThreads.put(TCB::running, slice);
             }
-            TCB::timeSliceCounter = 0;
+
             TCB::dispatch();
 
         }
         else if (code == GET_C){
+            char *ret;
 
+            __asm__ volatile("ld t2, 8*11(fp)");
+            __asm__ volatile("mv %0, t2" : "=r" (ret));
+
+            *ret = getCBuffer.getc();
+            if (ret == nullptr){
+                printString("pusenje");
+            }
+//            printString("c = ");
+//            putc(c);
+//            printString("\n");
+//            returnValue[count++] = uint64(c);
+//            __asm__ volatile("mv %0, a0" : "=r" (ret));
+            w_sstatus(sstatus);
+            w_sepc(sepc);
         }
         else if (code == PUT_C){
+            char c;
+            __asm__ volatile("ld t2, 8*11(fp)");
+            __asm__ volatile("mv %0, t2" : "=r" (c));
+
+            putCBuffer.putc(c);
 
         }
         else {
@@ -136,14 +158,12 @@ void Riscv::handleSupervisorTrap()
     }
     else if (scause == 0x8000000000000001UL)
     {
-//        printString("TIMER");
+//         TIMER
 //         interrupt: yes; cause code: supervisor software interrupt (CLINT; machine timer interrupt)
         time_t temp = Riscv::sleepingThreads.peekFirstSlice();
         time_t t1 = -1;
 
         if (temp != t1){
-//            printInteger(Riscv::sleepingThreads.peekFirstSlice());
-//            printString("\n");
             Riscv::sleepingThreads.decFirst();
             if (Riscv::sleepingThreads.peekFirstSlice() == 0) {
                 Riscv::sleepingThreads.removeFinishedThreads();
@@ -163,8 +183,17 @@ void Riscv::handleSupervisorTrap()
     }
     else if (scause == 0x8000000000000009UL)
     {
-        // interrupt: yes; cause code: supervisor external interrupt (PLIC; could be keyboard)
-        console_handler();
+//          interrupt: yes; cause code: supervisor external interrupt (PLIC; could be keyboard)
+        uint64 irq = plic_claim();
+        while (*((char*)(CONSOLE_STATUS)) & CONSOLE_RX_STATUS_BIT) {
+            if (getCBuffer.itemAvailable == nullptr) {
+                getCBuffer.itemAvailable = new _sem(0);
+            }
+            char c = (*(char*)CONSOLE_RX_DATA);
+            getCBuffer.putc(c);
+
+        }
+        plic_complete(irq);
     }
     else
     {

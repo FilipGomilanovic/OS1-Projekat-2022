@@ -17,6 +17,8 @@ public:
         delete[] stack;
     }
 
+    static void outputThreadBody(void*);
+
     bool isFinished() const { return finished; }
     void setFinished(bool value) { finished = value; }
 
@@ -85,11 +87,11 @@ private:
     bool blocked;
 
     friend class Riscv;
+    friend class _sem;
 
     static void threadWrapper();
 
     static void contextSwitch(Context *oldContext, Context *runningContext);
-
     static void dispatch();
 
     static uint64 timeSliceCounter;

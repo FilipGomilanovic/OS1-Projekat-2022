@@ -4,15 +4,14 @@
 
 #include "../h/tcb.hpp"
 #include "../h/riscv.hpp"
-#include "../h/print.hpp"
 #include "../h/syscall_c.h"
-#include "../h/_sem.h"
 #include "../h/ThreadSleep_C_API_test.hpp"
 
 bool finishedA = false;
 bool finishedB = false;
 bool finishedC = false;
 bool finishedD = false;
+bool finishedTastatura = false;
 _sem* sem;
 
 
@@ -26,12 +25,20 @@ void workerBodyA2(void* arg) {
     for (uint64 i = 0; i < 10; i++) {
         printString("A: i="); printInteger(i); printString("\n");
         for (uint64 j = 0; j < 10000; j++) {
-            for (uint64 k = 0; k < 30000; k++) { /* busy wait */ }
+            for (uint64 k = 0; k < 3000; k++) { /* busy wait */ }
             thread_dispatch();
         }
 //        thread_exit();
     }
-    printString("A finished!\n");
+//    putc('A');
+    volatile char x = getc();
+    volatile char y = getc();
+//    printString("x = "); putc(x); printString("\n");
+//    printString("y = "); putc(y); printString("\n");
+    putc(x);
+    putc(y);
+//    putc(x);
+        printString("A finished!\n");
     finishedA = true;
 }
 
@@ -44,6 +51,7 @@ void workerBodyB2(void* arg) {
             time_sleep(50);
             sem_signal(sem);
         }
+
         printString("B: i="); printInteger(i); printString("\n");
         for (uint64 j = 0; j < 10000; j++) {
             for (uint64 k = 0; k < 30000; k++) { /* busy wait */ }
@@ -84,7 +92,9 @@ void workerBodyC2(void* arg) {
 
 void workerBodyD2(void* arg) {
     uint8 i = 10;
-
+    putc('\n');
+    putc('L');
+    putc('\n');
     for (; i < 13; i++) {
         printString("D: i="); printInteger(i); printString("\n");
         if (i == 10) {
@@ -102,11 +112,36 @@ void workerBodyD2(void* arg) {
     for (; i < 16; i++) {
         printString("D: i="); printInteger(i); printString("\n");
     }
-
     printString("D finished!\n");
     finishedD = true;
     thread_dispatch();
 }
+
+void TastaturaWorker(void* arg) {
+    for (uint64 i = 0; i < 16; i++) {
+        if (i == 15){
+//            sem_signal(sem);
+        }
+        if (i == 8){
+            time_sleep(50);
+//            sem_signal(sem);
+        }
+
+        printString("Tastatura: i="); printInteger(i); printString("\n");
+        for (uint64 j = 0; j < 10000; j++) {
+            for (uint64 k = 0; k < 30000; k++) { /* busy wait */ }
+            thread_dispatch();
+        }
+    }
+    while (Riscv::getCBuffer.getCount() > 0){
+        char x = getc();
+        putc(x);
+    }
+    printString("\nTastatura finished!\n");
+    finishedTastatura = true;
+    thread_dispatch();
+}
+
 
 
 void Threads_C_API_test() {
@@ -126,30 +161,46 @@ void Threads_C_API_test() {
     while (!(finishedA && finishedB && finishedC && finishedD)) {
         thread_dispatch();
     }
+//    while (!(finishedA)) {
+//        thread_dispatch();
+//    }
+}
 
+void tastaturaTest(){
+    thread_t Tastatura;
+    thread_create(&Tastatura, TastaturaWorker, nullptr);
+    printString("Tastatura created\n");
+
+    while (!finishedTastatura) {
+        thread_dispatch();
+    }
 }
 
 void userMain() {
-    Threads_C_API_test(); // zadatak 2., niti C API i sinhrona promena konteksta
-    testSleeping();       // ThreadSleeping test
+//    Threads_C_API_test(); // zadatak 2., niti C API i sinhrona promena konteksta
+//    testSleeping();       // ThreadSleeping test
+    tastaturaTest();
 }
-
 
 int main()
 {
-
     Riscv::w_stvec((uint64) &Riscv::supervisorTrap);
+    TCB* outputThread;
+    thread_create(&outputThread, &TCB::outputThreadBody, nullptr);
+    Riscv::putCBuffer.itemAvailable = new _sem();
+    Riscv::getCBuffer.itemAvailable = new _sem();
+
     TCB* main;
     sem_open(&sem,0);
-
     thread_create(&main, nullptr, nullptr);
     TCB::running = main;
+
     Riscv::ms_sstatus(Riscv::SSTATUS_SIE);
+
     userMain();
 
 
     printString("Finished\n");
-
     return 0;
 
 
