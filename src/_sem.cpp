@@ -1,8 +1,11 @@
 //
 // Created by os on 9/7/22.
 //
-#include "../h/_sem.h"
+#include "../h/_sem.hpp"
 #include "../lib/mem.h"
+#include "../h/tcb.hpp"
+#include "../h/print.hpp"
+#include "../h/syscall_c.hpp"
 
 int _sem::wait() {
     val--;
@@ -51,8 +54,12 @@ void _sem::block() {
     NumOfBlockedThreads++;
     TCB::running->setBlocked(true);
     blocked.addLast(TCB::running);
-    TCB::dispatch();
+//    TCB::yield();
+    thread_dispatch();
+
 }
+
+
 
 void _sem::deblock() {
     NumOfBlockedThreads--;
@@ -68,6 +75,10 @@ void _sem::deblock() {
 
 _sem *_sem::createSemaphore(_sem **handle, unsigned int init) {
     *handle = new _sem(init);
+//    printString2("handle iz createSem ");
+//    printString2(":                ");
+//    printInteger((uint64)&(**handle));
+//    printString2("\n");
     return *handle;
 }
 

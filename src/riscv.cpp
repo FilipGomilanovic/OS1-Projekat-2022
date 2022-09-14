@@ -3,14 +3,14 @@
 //
 
 #include "../h/riscv.hpp"
-#include "../h/codes.h"
-#include "../h/syscall_c.h"
-#include "../lib/console.h"
+#include "../h/codes.hpp"
+#include "../h/syscall_c.hpp"
+#include "../h/print.hpp"
 
 
 SleepingThreadList Riscv::sleepingThreads;
-Buffer Riscv::putCBuffer;
-Buffer Riscv::getCBuffer;
+Buffer* Riscv::putCBuffer = nullptr;
+Buffer* Riscv::getCBuffer = nullptr;
 
 
 void Riscv::popSppSpie()
@@ -74,8 +74,10 @@ void Riscv::handleSupervisorTrap()
         else if (code == SEM_OPEN){
             sem_t* handle;
             unsigned init;
+
             __asm__ volatile("ld t2, 8*11(fp)");
             __asm__ volatile("mv %0, t2" : "=r" (handle));
+
             __asm__ volatile("ld t2, 8*12(fp)");
             __asm__ volatile("mv %0, t2" : "=r" (init));
             _sem::createSemaphore(handle, init);
@@ -124,15 +126,11 @@ void Riscv::handleSupervisorTrap()
             __asm__ volatile("ld t2, 8*11(fp)");
             __asm__ volatile("mv %0, t2" : "=r" (ret));
 
-            *ret = getCBuffer.getc();
+            *ret = getCBuffer->getc();
             if (ret == nullptr){
-                printString("pusenje");
+                printString2("ne postoji");
             }
-//            printString("c = ");
-//            putc(c);
-//            printString("\n");
-//            returnValue[count++] = uint64(c);
-//            __asm__ volatile("mv %0, a0" : "=r" (ret));
+
             w_sstatus(sstatus);
             w_sepc(sepc);
         }
@@ -141,7 +139,7 @@ void Riscv::handleSupervisorTrap()
             __asm__ volatile("ld t2, 8*11(fp)");
             __asm__ volatile("mv %0, t2" : "=r" (c));
 
-            putCBuffer.putc(c);
+            putCBuffer->putc(c);
 
         }
         else {
@@ -186,11 +184,9 @@ void Riscv::handleSupervisorTrap()
 //          interrupt: yes; cause code: supervisor external interrupt (PLIC; could be keyboard)
         uint64 irq = plic_claim();
         while (*((char*)(CONSOLE_STATUS)) & CONSOLE_RX_STATUS_BIT) {
-            if (getCBuffer.itemAvailable == nullptr) {
-                getCBuffer.itemAvailable = new _sem(0);
-            }
+
             char c = (*(char*)CONSOLE_RX_DATA);
-            getCBuffer.putc(c);
+            getCBuffer->putc(c);
 
         }
         plic_complete(irq);

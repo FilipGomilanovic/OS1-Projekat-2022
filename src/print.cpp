@@ -4,9 +4,11 @@
 
 #include "../h/print.hpp"
 #include "../h/riscv.hpp"
+#include "../h/syscall_c.hpp"
+
 //#include "../lib/console.h"
 
-void printString(char const *string)
+void printString2(char const *string)
 {
     uint64 sstatus = Riscv::r_sstatus();
     Riscv::mc_sstatus(Riscv::SSTATUS_SIE);

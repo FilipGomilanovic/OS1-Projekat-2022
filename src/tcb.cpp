@@ -4,7 +4,7 @@
 
 #include "../h/tcb.hpp"
 #include "../h/riscv.hpp"
-
+#include "../h/syscall_c.hpp"
 
 TCB *TCB::running = nullptr;
 int TCB::x = 0;
@@ -24,11 +24,12 @@ TCB *TCB::createThread(TCB** handle, Body body, void* arg, uint64* stack_space)
 
 void TCB::outputThreadBody(void *) {
     while(true){
-        while((*((char*)(CONSOLE_STATUS)) & CONSOLE_TX_STATUS_BIT) && (Riscv::putCBuffer.getCount() > 0)){
-            char c = Riscv::putCBuffer.getc();
+        while((*((char*)(CONSOLE_STATUS)) & CONSOLE_TX_STATUS_BIT)){
+            char c = Riscv::putCBuffer->getc();
             *((char*)CONSOLE_TX_DATA) = c;
         }
         thread_dispatch();
+        // && (Riscv::putCBuffer->getCount() > 0)  Nije radilo bez ovoga ali sad radi.
     }
 }
 

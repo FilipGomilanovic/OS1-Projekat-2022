@@ -5,8 +5,9 @@
 #ifndef XV6_THREADSLEEP_C_API_TEST_HPP
 #define XV6_THREADSLEEP_C_API_TEST_HPP
 
-#include "../h/syscall_c.h"
-#include "../h/print.hpp"
+#include "../h/syscall_c.hpp"
+
+#include "printing.hpp"
 
 bool finished[2];
 
@@ -16,7 +17,7 @@ void sleepyRun(void *arg) {
     while (--i > 0) {
 
         printString("Hello ");
-        printInteger(sleep_time);
+        printInt(sleep_time);
         printString(" !\n");
         time_sleep(sleep_time);
     }
@@ -29,8 +30,6 @@ void testSleeping() {
     thread_t sleepyThread[sleepy_thread_count];
 
     for (int i = 0; i < sleepy_thread_count; i++) {
-        if (sleep_times == nullptr) {
-        }
         thread_create(&sleepyThread[i], sleepyRun, sleep_times + i);
     }
 

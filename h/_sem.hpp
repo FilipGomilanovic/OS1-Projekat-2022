@@ -2,10 +2,11 @@
 // Created by os on 9/7/22.
 //
 
-#ifndef PROJECT_BASE_V1_1__SEM_H
-#define PROJECT_BASE_V1_1__SEM_H
+#ifndef PROJECT_BASE_V1_1__SEM_HPP
+#define PROJECT_BASE_V1_1__SEM_HPP
+#include "list.hpp"
 
-#include "tcb.hpp"
+class TCB;
 
 class _sem
 {
@@ -14,8 +15,8 @@ public:
     }
 
     void operator delete(void *ptr) {
-        printString("Pozove se ovaj i ne uradi nista\n");
-        printString("NIJE ZAVRSENO");
+//        printString("Pozove se ovaj i ne uradi nista\n");
+//        printString("NIJE ZAVRSENO");
     }
 
     ~_sem ();
@@ -33,7 +34,8 @@ protected:
     int properlyClosed = 0;
     int NumOfBlockedThreads = 0;
 private:
+
     List<TCB> blocked;
 };
 
-#endif //PROJECT_BASE_V1_1__SEM_H
+#endif //PROJECT_BASE_V1_1__SEM_HPP

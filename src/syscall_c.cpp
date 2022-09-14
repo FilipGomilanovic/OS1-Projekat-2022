@@ -1,7 +1,8 @@
-#include "../h/syscall_c.h"
+#include "../h/syscall_c.hpp"
 #include "../lib/mem.h"
 #include "../h/tcb.hpp"
-#include "../h/codes.h"
+#include "../h/codes.hpp"
+#include "../h/print.hpp"
 
 
 void* mem_alloc (size_t size) {
@@ -27,9 +28,9 @@ int thread_create (thread_t* handle, void(*start_routine)(void*), void* arg) {
 }
 
 int thread_exit () {
-    printString("Gasimo nit: ");
+    printString2("Gasimo nit: ");
     printInteger(TCB::running->getId());
-    printString("\n");
+    printString2("\n");
     __asm__ volatile("mv a0, %0" : : "r" (THREAD_EXIT));
     __asm__ volatile ("ecall");
     return 0;
@@ -43,9 +44,10 @@ void thread_dispatch () {
 }
 
 int sem_open (sem_t* handle, unsigned init) {
+
+    __asm__ volatile("mv a2, %0" : : "r" (init));
     __asm__ volatile("mv a1, %0" : : "r" (handle));
     __asm__ volatile("mv a0, %0" : : "r" (SEM_OPEN));
-    __asm__ volatile("mv a2, %0" : : "r" (init));
     __asm__ volatile ("ecall");
     return 0;
 }
@@ -73,11 +75,11 @@ int sem_signal (sem_t id) {
 
 int time_sleep (time_t slice) {
 
-    printString("Nit ");
+    printString2("Nit ");
     printInteger(TCB::running->getId());
-    printString(" uspavana na: ");
+    printString2(" uspavana na: ");
     printInteger(slice / 10);
-    printString(" sekundi\n");
+    printString2(" sekundi\n");
 
     __asm__ volatile("mv a0, %0" : : "r" (TIME_SLEEP));
     __asm__ volatile("mv a1, %0" : : "r" (slice));
@@ -97,7 +99,6 @@ char getc () {
     else {
         return '!';
     }
-
 }
 
 void putc (char c){
