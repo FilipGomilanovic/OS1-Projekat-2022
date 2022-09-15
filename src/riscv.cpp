@@ -4,17 +4,29 @@
 
 #include "../h/riscv.hpp"
 #include "../h/codes.hpp"
-#include "../h/syscall_c.hpp"
+#include "../h/syscall_c.h"
 #include "../h/print.hpp"
 
 
 SleepingThreadList Riscv::sleepingThreads;
 Buffer* Riscv::putCBuffer = nullptr;
 Buffer* Riscv::getCBuffer = nullptr;
+Riscv::Node* Riscv::head = nullptr;
 
+bool Riscv:: userMode = false;
+
+void Riscv::setMode(bool value) {
+    userMode = value;
+}
 
 void Riscv::popSppSpie()
 {
+    if (userMode) {
+        mc_sstatus(Riscv::SSTATUS_SPP);
+    }
+    else {
+        ms_sstatus(Riscv::SSTATUS_SPP);
+    }
     __asm__ volatile("csrw sepc, ra");
     __asm__ volatile("sret");
 }
@@ -33,8 +45,32 @@ void Riscv::handleSupervisorTrap()
         __asm__ volatile("mv %0, t1" : "=r" (code));
 
         if (code == MEM_ALLOC) {
+            size_t brojBlokova;
+            void *ret;
+            __asm__ volatile("ld t2, 8*12(fp)");
+            __asm__ volatile("mv %0, t2" : "=r" (brojBlokova));
 
+            __asm__ volatile("ld t2, 8*11(fp)");
+            __asm__ volatile("mv %0, t2" : "=r" (ret));
+
+            ret = nullptr;
+            Node* temp = head;
+            while (temp) {    //while temp and temp->size < brojBLokowa * min_block_size...
+                if (temp->size >= brojBlokova) {
+                    if (temp == head) {
+                        ret = (void*)head;
+                        size_t size = brojBlokova*MEM_BLOCK_SIZE;
+                        head = (Node*)((char*)head + size);
+                        head->size = size;
+                        head->next = temp->next;
+                    }
+                }
+                temp = temp->next;
+            }
+            w_sstatus(sstatus);
+            w_sepc(sepc);
         }
+
         else if (code == MEM_FREE) {
 
         }
@@ -59,6 +95,7 @@ void Riscv::handleSupervisorTrap()
             TCB::createThread(handle, start_routine, args, stack);
 
         }
+
         else if (code == THREAD_EXIT){
             TCB::running->setFinished(true);
             TCB::dispatch();

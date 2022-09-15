@@ -4,8 +4,8 @@
 #include "../h/_sem.hpp"
 #include "../lib/mem.h"
 #include "../h/tcb.hpp"
-#include "../h/print.hpp"
-#include "../h/syscall_c.hpp"
+//#include "../h/print.hpp"
+#include "../h/syscall_c.h"
 
 int _sem::wait() {
     val--;

@@ -82,9 +82,22 @@ public:
     // supervisor trap
     static void supervisorTrap();
 
+    static void InitMem(){
+        head = (Node*)HEAP_START_ADDR;
+        head->next = nullptr;
+        head->size = ((uint64)HEAP_END_ADDR-(uint64)HEAP_START_ADDR);
+    }
+
+    static void setMode(bool value);
+
+    struct Node {
+        Node* next;
+        uint64 size;
+    };
+    static bool userMode;
     static Buffer *putCBuffer;
     static Buffer *getCBuffer;
-
+    static Node* head;
 private:
 
     // supervisor trap handler

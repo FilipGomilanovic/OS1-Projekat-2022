@@ -7,6 +7,7 @@
 
 #include "../lib/hw.h"
 #include "scheduler.hpp"
+#include "../h/syscall_cpp.hpp"
 
 
 // Thread Control Block
@@ -30,7 +31,12 @@ public:
 
     uint64 getTimeSlice() const { return timeSlice; }
 
+    void start() {
+        Scheduler::put(this);
+    }
+
     using Body = void (*)(void*);
+
     static TCB *createThread(TCB** handle, Body body, void* arg, uint64* stack_space);
     static void yield();
     int getId() { return id; }
@@ -38,20 +44,8 @@ public:
     static TCB *running;
     static int x;
 
+
 private:
-//    TCB(Body body, uint64 timeSlice) :
-//            body(body),
-//
-//            stack(body != nullptr ? new uint64[STACK_SIZE] : nullptr),
-//            context({(uint64) &threadWrapper,
-//                     stack != nullptr ? (uint64) &stack[STACK_SIZE] : 0
-//                    }),
-//            timeSlice(timeSlice),
-//
-//            finished(false)
-//    {
-//        if (body != nullptr) { Scheduler::put(this); }
-//    }
 
     TCB(Body body, uint64 timeSlice, void* arg, uint64* stack_space) :
             arg(arg),
@@ -66,7 +60,7 @@ private:
             sleeping(false),
             blocked(false)
     {
-        if (body != nullptr) {
+        if (body != nullptr && body != Thread::threadWrapper) {
             Scheduler::put(this);
         }
     }

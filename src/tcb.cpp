@@ -4,7 +4,7 @@
 
 #include "../h/tcb.hpp"
 #include "../h/riscv.hpp"
-#include "../h/syscall_c.hpp"
+#include "../h/syscall_c.h"
 
 TCB *TCB::running = nullptr;
 int TCB::x = 0;
@@ -13,12 +13,9 @@ uint64 TCB::timeSliceCounter = 0;
 TCB *TCB::createThread(TCB** handle, Body body, void* arg, uint64* stack_space)
 {
     *handle = new TCB(body, TIME_SLICE, arg, stack_space);
-//    printString("handle iz createThread ");
-//    printInteger(x);
+//    printString("handle iz createThread "); printInteger(x);
     x++;
-//    printString(":                ");
-//    printInteger((uint64)&(**handle));
-//    printString("\n");
+//    printString(":                "); printInteger((uint64)&(**handle)); printString("\n");
     return *handle;
 }
 

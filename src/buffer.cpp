@@ -3,7 +3,7 @@
 //
 
 #include "../h/buffer.hpp"
-#include "../h/syscall_c.hpp"
+#include "../h/syscall_c.h"
 
 Buffer::Buffer() : head(0),tail(0),count(0) {
     itemAvailable = new _sem(0);

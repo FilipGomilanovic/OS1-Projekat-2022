@@ -3,15 +3,10 @@
 
 Buffer::Buffer(int _cap) : cap(_cap + 1), head(0), tail(0) {
     buffer = (int *)mem_alloc(sizeof(int) * cap);
-    itemAvailable = nullptr;
-    spaceAvailable = nullptr;
-    mutexHead = nullptr;
-    mutexTail = nullptr;
     sem_open(&itemAvailable, 0);
     sem_open(&spaceAvailable, _cap);
     sem_open(&mutexHead, 1);
     sem_open(&mutexTail, 1);
-
 }
 
 Buffer::~Buffer() {
