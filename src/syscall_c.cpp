@@ -93,8 +93,8 @@ int time_sleep (time_t slice) {
 //    printInteger(slice / 10);
 //    printString2(" sekundi\n");
 
-    __asm__ volatile("mv a0, %0" : : "r" (TIME_SLEEP));
     __asm__ volatile("mv a1, %0" : : "r" (slice));
+    __asm__ volatile("mv a0, %0" : : "r" (TIME_SLEEP));
     __asm__ volatile ("ecall");
     return 0;
 }
