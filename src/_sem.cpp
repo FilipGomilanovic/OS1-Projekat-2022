@@ -1,26 +1,19 @@
-//
-// Created by os on 9/7/22.
-//
 #include "../h/_sem.hpp"
 #include "../lib/mem.h"
 #include "../h/tcb.hpp"
-//#include "../h/print.hpp"
+#include "../h/riscv.hpp"
 #include "../h/syscall_c.h"
 
 int _sem::wait() {
     val--;
     if (val<0){
-//        printString("Nit ");
-//        printInteger(TCB::running->getId());
-//        printString(" blokirana\n");
         block();
     }
-    if (!closed)    //Ako semafor nije zatvoren
+    if (!closed)
         return 0;
-    else {          //Ako je semafor zatvoren NE VRACA -1 UVEK! Ako je broj blokiranih niti 0 to znaci da se nit prvo
-                    //oslobodila sa signal pa je onda dealociran semafor(sto je regularno)
-        if (NumOfBlockedThreads == 0)
-            return 0;
+    else {                              //Ako je semafor zatvoren NE VRACA -1 UVEK!
+        if (NumOfBlockedThreads == 0)   // Ako je broj blokiranih niti 0 to znaci da se nit prvo oslobodila sa signal
+            return 0;                   // pa je tek onda zatvoren semafor (sto je regularno).
         else {
             NumOfBlockedThreads--;
             return -1;
@@ -29,6 +22,9 @@ int _sem::wait() {
 }
 
 int _sem::signal() {
+    if (closed) {
+        return -1;
+    }
     val++;
     if (val<=0) {
         deblock();
@@ -39,6 +35,7 @@ int _sem::signal() {
 int _sem::close() {
     if (closed)
         return -1;
+    closed = true;
     if (blocked.peekFirst() != nullptr) {
         while (blocked.peekFirst()) {
             blocked.peekFirst()->setBlocked(false);
@@ -46,7 +43,7 @@ int _sem::close() {
             blocked.removeFirst();
         }
     }
-    closed = true;
+    Riscv::listOfClosedSemaphores->addLast(this);
     return 0;
 }
 
@@ -54,39 +51,24 @@ void _sem::block() {
     NumOfBlockedThreads++;
     TCB::running->setBlocked(true);
     blocked.addLast(TCB::running);
-//    TCB::yield();
     thread_dispatch();
-
 }
-
-
 
 void _sem::deblock() {
     NumOfBlockedThreads--;
     TCB* temp = blocked.removeFirst();
     temp->setBlocked(false);
-//    printString("Nit ");
-//    printInteger(temp->getId());
-//    printString(" odblokirana\n");
-
     Scheduler::put(temp);
-
 }
 
 _sem *_sem::createSemaphore(_sem **handle, unsigned int init) {
     *handle = new _sem(init);
-//    printString2("handle iz createSem ");
-//    printString2(":                ");
-//    printInteger((uint64)&(**handle));
-//    printString2("\n");
     return *handle;
 }
 
-_sem::~_sem() {
-    int ret = close();
-    if (ret == -2){
-
-    }
+_sem::~_sem(){
+    close();
 }
+
 
 
