@@ -1,20 +1,16 @@
-//
-// Created by marko on 20.4.22..
-//
-
 #ifndef OS1_VEZBE07_RISCV_CONTEXT_SWITCH_2_INTERRUPT_TCB_HPP
 #define OS1_VEZBE07_RISCV_CONTEXT_SWITCH_2_INTERRUPT_TCB_HPP
 
 #include "../lib/hw.h"
 #include "scheduler.hpp"
 #include "../h/syscall_cpp.hpp"
-
+#include "../h/print.hpp"
 
 // Thread Control Block
 class TCB
 {
 public:
-    ~TCB() {
+    virtual ~TCB() {
         delete[] stack;
     }
 
@@ -29,6 +25,10 @@ public:
     bool isBlocked() const { return blocked; }
     void setBlocked(bool value) { blocked = value; }
 
+    bool getMain() const { return main; }
+
+    int getId() const { return id; }
+
     uint64 getTimeSlice() const { return timeSlice; }
 
     void start() {
@@ -39,11 +39,8 @@ public:
 
     static TCB *createThread(TCB** handle, Body body, void* arg, uint64* stack_space);
     static void yield();
-    int getId() { return id; }
-
     static TCB *running;
     static int x;
-
 
 private:
 
@@ -58,11 +55,13 @@ private:
             id(x),
             finished(false),
             sleeping(false),
-            blocked(false)
+            blocked(false),
+            main(body == nullptr)
     {
         if (body != nullptr && body != Thread::threadWrapper) {
             Scheduler::put(this);
         }
+
     }
 
     struct Context
@@ -79,6 +78,7 @@ private:
     bool finished;
     bool sleeping;
     bool blocked;
+    bool main = false;
 
     friend class Riscv;
     friend class _sem;
@@ -90,8 +90,6 @@ private:
 
     static uint64 timeSliceCounter;
 
-    static uint64 constexpr STACK_SIZE = 1024;
-    static uint64 constexpr TIME_SLICE = 2;
 };
 
 #endif //OS1_VEZBE07_RISCV_CONTEXT_SWITCH_2_INTERRUPT_TCB_HPP

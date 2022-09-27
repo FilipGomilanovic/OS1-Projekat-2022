@@ -1,11 +1,6 @@
-//
-// Created by os on 9/6/22.
-//
-
 #ifndef PROJECT_BASE_V1_1_SLEEPINGTHREADSLIST_HPP
 #define PROJECT_BASE_V1_1_SLEEPINGTHREADSLIST_HPP
 
-//#include "syscall_c.hpp"
 #include "scheduler.hpp"
 
 class SleepingThreadList

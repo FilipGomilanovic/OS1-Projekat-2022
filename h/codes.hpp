@@ -1,6 +1,3 @@
-//
-// Created by os on 9/5/22.
-//
 #include "../lib/hw.h"
 #ifndef PROJECT_BASE_V1_1_CODES_H
 #define PROJECT_BASE_V1_1_CODES_H

@@ -1,7 +1,3 @@
-//
-// Created by marko on 20.4.22..
-//
-
 #include "../h/print.hpp"
 #include "../h/riscv.hpp"
 #include "../h/syscall_c.h"
@@ -48,4 +44,12 @@ void printInteger(uint64 integer)
 
     while (--i >= 0) { putc(buf[i]); }
     Riscv::ms_sstatus(sstatus & Riscv::SSTATUS_SIE ? Riscv::SSTATUS_SIE : 0);
+}
+
+void printStringForUserMode(char const *string) {
+    while (*string != '\0')
+    {
+        putc(*string);
+        string++;
+    }
 }
