@@ -1,13 +1,10 @@
-//
-// Created by os on 9/14/22.
-//
 #include "../h/syscall_cpp.hpp"
 #include "../h/riscv.hpp"
 
-//void* ::operator new (size_t size) {
+//void* operator new (size_t size) {
 //    return mem_alloc(size);
 //}
-//void ::operator delete (void* adr) {
+//void operator delete (void* adr) {
 //    mem_free(adr);
 //}
 
@@ -16,8 +13,9 @@ Thread::Thread(void (*body)(void *), void *arg) {
     thread_create(&myHandle, body, arg);
 }
 
-Thread::~Thread() noexcept {
-//    thread_exit();
+Thread::~Thread() {
+    myHandle->setFinished(true);
+    delete myHandle;
 }
 
 int Thread::start() {

@@ -1,19 +1,14 @@
-//
-// Created by marko on 20.4.22..
-//
-
 #include "../h/riscv.hpp"
 #include "../h/codes.hpp"
 #include "../h/syscall_c.h"
-#include "../h/print.hpp"
-
 
 SleepingThreadList Riscv::sleepingThreads;
+List<_sem>* Riscv::listOfClosedSemaphores;
 Buffer* Riscv::putCBuffer = nullptr;
 Buffer* Riscv::getCBuffer = nullptr;
 Riscv::Node* Riscv::head = nullptr;
-
 bool Riscv:: userMode = false;
+
 
 void Riscv::setMode(bool value) {
     userMode = value;
@@ -46,25 +41,27 @@ void Riscv::handleSupervisorTrap()
 
         if (code == MEM_ALLOC) {
             size_t brojBlokova;
-            void *ret;
-            __asm__ volatile("ld t2, 8*12(fp)");
+             void *ret;
+            __asm__ volatile("ld t2, 8*11(fp)");
             __asm__ volatile("mv %0, t2" : "=r" (brojBlokova));
 
-            __asm__ volatile("ld t2, 8*11(fp)");
+            __asm__ volatile("ld t2, 8*12(fp)");
             __asm__ volatile("mv %0, t2" : "=r" (ret));
 
-            ret = nullptr;
+
             Node* temp = head;
-            while (temp) {    //while temp and temp->size < brojBLokowa * min_block_size...
+            while (temp && temp->size < brojBlokova*MEM_BLOCK_SIZE) {    //while temp and temp->size < brojBLokova * min_block_size...
                 if (temp->size >= brojBlokova) {
                     if (temp == head) {
-                        ret = (void*)head;
+
                         size_t size = brojBlokova*MEM_BLOCK_SIZE;
                         head = (Node*)((char*)head + size);
                         head->size = size;
                         head->next = temp->next;
                     }
                 }
+                ret = (void *)temp;
+
                 temp = temp->next;
             }
             w_sstatus(sstatus);
@@ -79,6 +76,7 @@ void Riscv::handleSupervisorTrap()
             void* args = nullptr;
             uint64 *stack;
             thread_t* handle;
+            int *ret;
 
             __asm__ volatile("ld t2, 8*11(fp)");
             __asm__ volatile("mv %0, t2" : "=r" (handle));
@@ -92,13 +90,21 @@ void Riscv::handleSupervisorTrap()
             __asm__ volatile("ld t1, 8*14(fp)");
             __asm__ volatile("mv %0, t1" : "=r" (stack));
 
-            TCB::createThread(handle, start_routine, args, stack);
+            __asm__ volatile("ld t1, 8*15(fp)");
+            __asm__ volatile("mv %0, t1" : "=r" (ret));
 
+            if (!(TCB::createThread(handle, start_routine, args, stack))){
+                *ret = -1;
+            }
+            else {
+                *ret = 0;
+            }
         }
-
         else if (code == THREAD_EXIT){
             TCB::running->setFinished(true);
+            TCB* t = TCB::running;
             TCB::dispatch();
+            delete t;
             w_sstatus(sstatus);
             w_sepc(sepc);
         }
@@ -111,44 +117,66 @@ void Riscv::handleSupervisorTrap()
         else if (code == SEM_OPEN){
             sem_t* handle;
             unsigned init;
+            int *ret;
 
             __asm__ volatile("ld t2, 8*11(fp)");
             __asm__ volatile("mv %0, t2" : "=r" (handle));
 
             __asm__ volatile("ld t2, 8*12(fp)");
             __asm__ volatile("mv %0, t2" : "=r" (init));
-            _sem::createSemaphore(handle, init);
+
+            __asm__ volatile("ld t1, 8*13(fp)");
+            __asm__ volatile("mv %0, t1" : "=r" (ret));
+
+            if (!(_sem::createSemaphore(handle, init))){
+                *ret = -1;
+            } else {
+                *ret = 0;
+            }
 
         }
         else if (code == SEM_CLOSE){
-            sem_t* handle;
+            sem_t handle;
+            int *ret;
             __asm__ volatile("ld t2, 8*11(fp)");
             __asm__ volatile("mv %0, t2" : "=r" (handle));
+
+            __asm__ volatile("ld t2, 8*12(fp)");
+            __asm__ volatile("mv %0, t2" : "=r" (ret));
+
+            *ret = handle->close();
 
         }
         else if (code == SEM_WAIT){
             sem_t id;
+            int *ret;
+
             __asm__ volatile("ld t2, 8*11(fp)");
             __asm__ volatile("mv %0, t2" : "=r" (id));
 
-            id->wait();
+            __asm__ volatile("ld t1, 8*12(fp)");
+            __asm__ volatile("mv %0, t1" : "=r" (ret));
+
+            *ret = id->wait();
 
         }
         else if (code == SEM_SIGNAL){
             sem_t id;
+            int *ret;
+
             __asm__ volatile("ld t2, 8*11(fp)");
             __asm__ volatile("mv %0, t2" : "=r" (id));
-            id->signal();
+
+            __asm__ volatile("ld t1, 8*12(fp)");
+            __asm__ volatile("mv %0, t1" : "=r" (ret));
+
+            *ret = id->signal();
         }
         else if (code == TIME_SLEEP){
-            //TReba da smestim nit u sleepingThreads i da promenim kontekst, ali ne smem da je opet vratim u scheduler
-
             time_t slice;
             __asm__ volatile("ld t2, 8*11(fp)");
             __asm__ volatile("mv %0, t2" : "=r" (slice));
-//            printString("\nSlice = ");
-//            printInteger(slice);
-//            printString("\n");
+
             if(slice != 0) {
                 TCB::running->setSleeping(true);
                 Riscv::sleepingThreads.put(TCB::running, slice);
@@ -164,12 +192,6 @@ void Riscv::handleSupervisorTrap()
             __asm__ volatile("mv %0, t2" : "=r" (ret));
 
             *ret = getCBuffer->getc();
-            if (ret == nullptr){
-                printString2("ne postoji");
-            }
-
-            w_sstatus(sstatus);
-            w_sepc(sepc);
         }
         else if (code == PUT_C){
             char c;
@@ -180,12 +202,12 @@ void Riscv::handleSupervisorTrap()
 
         }
         else {
-            uint64 volatile sepc = r_sepc() + 4;
-            uint64 volatile sstatus = r_sstatus();
+//            uint64 volatile sepc = r_sepc() + 4;
+//            uint64 volatile sstatus = r_sstatus();
             TCB::timeSliceCounter = 0;
             TCB::dispatch();
-            w_sstatus(sstatus);
-            w_sepc(sepc);
+//            w_sstatus(sstatus);
+//            w_sepc(sepc);
         }
 
         w_sstatus(sstatus);
@@ -219,7 +241,7 @@ void Riscv::handleSupervisorTrap()
     else if (scause == 0x8000000000000009UL)
     {
 //          interrupt: yes; cause code: supervisor external interrupt (PLIC; could be keyboard)
-        uint64 irq = plic_claim();
+        int irq = plic_claim();
         while (*((char*)(CONSOLE_STATUS)) & CONSOLE_RX_STATUS_BIT) {
 
             char c = (*(char*)CONSOLE_RX_DATA);

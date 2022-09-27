@@ -1,7 +1,3 @@
-//
-// Created by marko on 20.4.22..
-//
-
 #ifndef OS1_VEZBE07_RISCV_CONTEXT_SWITCH_2_INTERRUPT_RISCV_HPP
 #define OS1_VEZBE07_RISCV_CONTEXT_SWITCH_2_INTERRUPT_RISCV_HPP
 
@@ -98,6 +94,7 @@ public:
     static Buffer *putCBuffer;
     static Buffer *getCBuffer;
     static Node* head;
+    static List<_sem> *listOfClosedSemaphores;
 private:
 
     // supervisor trap handler
@@ -105,7 +102,6 @@ private:
     static SleepingThreadList sleepingThreads;
 
 };
-
 
 inline uint64 Riscv::r_scause()
 {
