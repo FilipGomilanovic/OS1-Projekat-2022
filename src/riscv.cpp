@@ -202,12 +202,8 @@ void Riscv::handleSupervisorTrap()
 
         }
         else {
-//            uint64 volatile sepc = r_sepc() + 4;
-//            uint64 volatile sstatus = r_sstatus();
             TCB::timeSliceCounter = 0;
             TCB::dispatch();
-//            w_sstatus(sstatus);
-//            w_sepc(sepc);
         }
 
         w_sstatus(sstatus);
