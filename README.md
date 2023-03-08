@@ -1,4 +1,4 @@
-# Projekat iz OS1 za godinu 2021/22
+# Projekat iz OS1 za godinu 2021/22 (Jezgro operativnog sistema)
 
 ## Odnos jezgra i sistema-domaćina:
 Jezgro i korisnička aplikacija treba da se posmatraju kao jedinstven program (.exe) dobijen
