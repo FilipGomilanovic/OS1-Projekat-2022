@@ -1,59 +1,43 @@
-# Projekat iz OS1 za godinu 2021/22 (Jezgro operativnog sistema)
+# Operating-system-kernel
 
-## Odnos jezgra i sistema-domaćina:
-Jezgro i korisnička aplikacija treba da se posmatraju kao jedinstven program (.exe) dobijen
-prevođenjem i statičkim povezivanjem kôda na izvornom programskom jeziku na kom su
-realizovani. Oni će biti pokrenuti unutar edukativnog operativnog sistema xv6 kao sistema domaćina. Ovaj sistem xv6 je za ovu priliku značajno modifikovan tako što su mu izbačene
-mnoge funkcionalnosti (promena konteksta i raspoređivanje procesa, upravljanje memorijom,
-fajl podsistem, upravljanje diskom itd.). Sistem-domaćin ima ulogu samo da se sam pokrene i
-inicijalizuje ciljni hardver, potom napravi samo jedan proces sa virtuelnim adresnim prostorom
-koji zauzima celu raspoloživu fizičku memoriju, učita kôd programa koji čine realizovano
-jezgro i sa njim povezana aplikacija i zatim pokrene njegovo izvršavanje u kontekstu tog
-jedinog procesa. Osim toga, sistem-domaćin obezbeđuje i osnovne usluge hardvera: periodičan
-prekid od tajmera i pristup konzoli (tastaturi i ekranu). Na PC računarima i njihovim
-operativnim sistemima cela ova računarska platforma (procesor RISC V, tajmer i konzola, kao
-i sistem-domaćin xv6) simuliraju se odgovarajućom virtuelnom mašinom (emulatorom).
+OS kernel is implemented for **RISC V** architecture and is ran in qemu emulator. No external libraries are used, meaning that it's not allowed to use any host's operating system system calls (threads, memory allocation, semaphores, interrupts etc. ) and everything is written from scratch.
 
-<ins>U realizaciji jezgra nije dozvoljeno koristiti usluge operativnog sistema-domaćina niti
-operativnog sistema PC računara na kom se sve ovo izvršava, a koje se odnose na koncepte niti
-ili procesa, semafora, prekida, sinhronizacije i komunikacije između niti ili procesa, itd. Drugim
-rečima, sve zahtevane koncepte i funkcionalnosti potrebno je realizovati u potpunosti
-samostalno i „od nule“. </ins>
-<hr>
+---
 
-### Opšti zahtevi:
+The kernel provides three interfaces to the user program that are organized in layers.
 
-Jezgro treba da obezbedi tri vrste interfejsa prema korisničkom programu: 
+![Layers Image](https://github.com/Ognjenjebot/Operating-system-kernel/blob/main/Layers.jpg?raw=true)
 
-* ABI (engl. application binary interface) je binarni interfejs sistemskih poziva koji se
-vrše pomoću softverskog prekida ciljnog procesora. Ovaj sloj obezbeđuje prenos argumenata
-sistemskog poziva preko registara procesora, prelazak u privilegovani režim rada procesora i
-prelazak na kôd jezgra.
+Code for all the layers is being run in a unique address space. Kernel code and code with hardware access runs in privileged mode(system mode), while everything under the dark line runs in user mode.
 
-* C API (engl. application programming interface) je klasičan, proceduralan (ne
-objektno orijentisan) programski interfejs sistemskih poziva implementiran kao skup funkcija
-na jeziku C. Ove funkcije u svojoj implementaciji mogu imati jedan sistemski poziv, više njih
-ili nijedan sistemski poziv iz sloja ABI, u zavisnosti od svoje uloge. Tako su ove funkcije
-zapravo omotač (engl. wrapper) oko interfejsa ABI.
+ABI(application binary interface) is an binary interface for system calls, which are called by software interrupts. This layer provides sending arguments to system calls thru processor registers, changing mode from system to user and going into kernel code.
 
-* C++ API je objektno orijentisan API koji pruža objektni pogled na koncepte koje
-jezgro podržava. Implementiran je kao jednostavan objektno orijentisan omotač oko funkcija
-iz sloja C API pisan na jeziku C++. 
-<hr>
+C API(application programming interface) is a classic, procedural programming interface for system calls implemented as C functions. These functions act as a wrapper for ABI interface.
 
-## Sistemski pozivi koje je trebalo realizovati:
-| Funkcija       | Objašnjenje         |
-| ------------- |:-------------:|
-| `void* mem_alloc (size_t size);`             | Alocira (najmanje) size bajtova memorije, zaokruženo i poravnato na blokove veličine MEM_BLOCK_SIZE. Vraća pokazivač na alocirani deo memorije u slučaju uspeha, a null pokazivač u slučaju neuspeha. MEM_BLOCK_SIZE je celobrojna konstanta veća od ili jednaka 64, a manja od ili jednaka 1024. |
-| `int mem_free (void*);`     | Oslobađa prostor prethodno zauzet pomoću mem_alloc. Vraća 0 u slučaju uspeha, negativnu vrednost u slučaju greške (kôd greške). Argument mora imati vrednost vraćenu iz mem_alloc. Ukoliko to nije slučaj, ponašanje je nedefinisano: jezgro može vratiti grešku ukoliko može da je detektuje ili manifestovati bilo kakvo drugo predvidivo ili nepredvidivo ponašanje.|
-| `class _thread;` <br> `typedef _thread* thread_t;` <br> `int thread_create (thread_t* handle, void(*start_routine)(void*), void* arg);` | Pokreće nit nad funkcijom start_routine, pozivajući je sa argumentom arg. U slučaju uspeha, u *handle upisuje „ručku“ novokreirane niti i vraća 0, a u slučaju neuspeha vraća negativnu vrednost (kôd greške). „Ručka“ je interni identifikator koji jezgro koristi da bi identifikovalo nit (pokazivač na neku internu strukturu/objekat jezgra čije je ime sakriveno iza sinonima _thread). |
-| `int thread_exit ();` | Gasi tekuću nit. U slučaju neuspeha vraća negativnu vrednost (kôd greške). |
-| `void thread_dispatch ();`  | Potencijalno oduzima procesor tekućoj i daje nekoj drugoj (ili istoj) niti. |
-| `class _sem;` <br> `typedef _sem* sem_t;` <br> `int sem_open (  sem_t* handle,  unsigned init);` | Kreira semafor sa inicijalnom vrednošću init. U slučaju uspeha, u *handle upisuje ručku novokreiranog semafora i vraća 0, a u slučaju neuspeha vraća negativnu vrednost (kôd greške). „Ručka“ je interni identifikator koji jezgro koristi da bi identifikovalo semafore (pokazivač na neku internu strukturu/objekat jezgra čije je ime sakriveno iza sinonima _sem). |
-| `int sem_close (sem_t handle);` | Oslobađa semafor sa datom ručkom. Sve niti koje su se zatekle da čekaju na semaforu se deblokiraju, pri čemu njihov wait vraća grešku. U slučaju uspeha vraća 0, a u slučaju neuspeha vraća negativnu vrednost (kôd greške). |
-| `int sem_wait (sem_t id);` | Operacija wait na semaforu sa datom ručkom. U slučaju uspeha vraća 0, a u slučaju neuspeha, uključujući i slučaj kada je semafor dealociran dok je pozivajuća nit na njemu čekala, vraća negativnu vrednost (kôd greške). |
-| `int sem_signal (sem_t id);` | Operacija signal na semaforu sa datom ručkom. U slučaju uspeha vraća 0, a u slučaju neuspeha vraća negativnu vrednost (kôd greške). |
-| `typedef unsigned long time_t;` <br> `int time_sleep (time_t);`| Uspavljuje pozivajuću nit na zadati period u internim jedinicama vremena (periodama tajmera). U slučaju uspeha vraća 0, a u slučaju neuspeha vraća negativnu vrednost (kôd greške). |
-| `const int EOF = -1;` <br> `char getc ();` | Učitava jedan znak iz bafera znakova učitanih sa konzole. U slučaju da je bafer prazan, suspenduje pozivajuću nit dok se znak ne pojavi. Vraća učitani znak u slučaju uspeha, a konstantu EOF u slučaju greške. |
-| `void putc (char);` | Ispisuje dati znak na konzolu |
+C++ API is an object oriented API which serves as a wrapper for functions from C API.
 
+| Number | Function                                                                                                                 | Description                                                                                                                                                                                                                                                                    |
+| :----- | :----------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0x01   | `void* mem_alloc(size_t size);`                                                                                          | Alocates size bytes of memory, rounded and aligned on block of size MEM_BLOCK_SIZE. Returns a pointer to the memory block if successfull, or null if not.                                                                                                                      |
+| 0x02   | `int mem_free(void*);`                                                                                                   | Free's memory previously alocated with mem_alloc. Return's 0 in case of success or else, negative value (error code). Argument must be a returned value of mem_alloc. If that's not the case, action is undefined: kernel might return an error or do something unpredictable. |
+| 0x11   | `class _thread; typedef _thread* thread_t; int thread_create(thread_t* handle, void(*start_routine)(void*), void* arg);` | Starts a thread of function start_routine, calling it with argument arg. In case of success, \*handle will contain the handle for the thread and return value will be 0, or else a negative value. "Handle" is used to indentify threads.                                      |
+| 0x12   | `int thread_exit(); `                                                                                                    | Turns off the active thread. In case of an error, return a negative value.                                                                                                                                                                                                     |
+| 0x13   | `void thread_dispach();`                                                                                                 | Potentially takes the processor from active thread and gives it to some other thread.                                                                                                                                                                                          |
+| 0x21   | `class _sem; typedef _sem* sem_t; int sem_open(sem_t* handle, unsigned init);`                                           | Creates a semaphore with an initial value of init. In case of success, \*handle will contain the handle for the semaphore and the return value will be 0, or else, return would be a negative value. "Handle" is used to identify semaphores.                                  |
+| 0x22   | `int sem_close(sem_t handle);`                                                                                           | Free's the semaphore with the handle identifier. All threads that were blocked on this semaphore are deblocked, and their `wait` returns an error. Returns 0 in case of succes, or else a negative value.                                                                      |
+| 0x23   | `int sem_wait(sem_t id);`                                                                                                | Operation wait for semaphore in argument. Returns 0 in case of succes, or else even in the situation when the semaphore is dealocated while the active thread is waiting on him, returns a negative value.                                                                     |
+| 0x24   | `int sem_signal(sem_t id);`                                                                                              | Operation signal for semaphore in argument. Returns 0 in case of succes, or else a negative value.                                                                                                                                                                             |
+| 0x31   | `typedef unsigned long time_t; int time_sleep(time_t);`                                                                  | Sleeps the active thread for timer periods. Returns 0 in case of succes, or else a negative value.                                                                                                                                                                             |
+| 0x41   | `const int EOF = -1; char getc();`                                                                                       | Loads a character from the character buffer loaded from console. In case the buffer is empty, suspends active thread until a character appears. Returns loaded char in case of success, or else EOF.                                                                           |
+| 0x42   | `void putc(char);`                                                                                                       | Writes char from argument in to the console.                                                                                                                                                                                                                                   |
+
+> In short, the kernel provides:
+
+- Synchronous context change
+- Asynchronous context change
+- Two modes, system and user mode
+- Interrupt handling
+- Fully implemented threads and semaphores
+- Memory allocation and deallocation (yet to be implemented)
+- Thread sleep method
+- Collecting characters from console and writing them on it
